@@ -99,6 +99,8 @@ cache_content_status_t cache_content_crash_recover(unsigned short exportid,
 
   fsal_attrib_list_t fsal_attr;
   cache_inode_fsal_data_t fsal_data;
+  inode_entry.fh_desc.len = 0;
+  inode_entry.fh_desc.start = (caddr_t)NULL;
 
   *pstatus = CACHE_CONTENT_SUCCESS;
 

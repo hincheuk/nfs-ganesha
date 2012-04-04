@@ -468,7 +468,7 @@ HashTable_SetLatched(struct hash_table *ht,
      /* New node for the case of non-overwrite */
      struct rbt_node *mutator = NULL;
 
-     assert(key->pdata != 0x7feffdfb0);
+//     assert(key->pdata != 0x7feffdfb0);
 
      /* In the case of collision */
      if (latch->locator) {
