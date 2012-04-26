@@ -904,7 +904,7 @@ void state_cache_inode_unpin_locked(cache_entry_t * entry)
 {
   if((entry->type != REGULAR_FILE || glist_empty(&entry->object.file.lock_list)) &&
      glist_empty(&entry->state_list))
-    cache_inode_unpin(entry);
+    cache_inode_dec_pin_ref(entry);
 }
 
 void state_cache_inode_unpin(cache_entry_t * pentry)

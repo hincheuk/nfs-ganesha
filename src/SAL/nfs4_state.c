@@ -142,7 +142,7 @@ state_status_t state_add_impl(cache_entry_t         * pentry,
   struct glist_head    * glist;
   cache_inode_status_t   cache_status;
 
-  cache_status = cache_inode_pin(pentry);
+  cache_status = cache_inode_inc_pin_ref(pentry);
 
   if(cache_status != CACHE_INODE_SUCCESS)
     {
