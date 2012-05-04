@@ -457,8 +457,7 @@ cache_inode_lru_clean(cache_entry_t *entry,
      cache_inode_status_t cache_status = CACHE_INODE_SUCCESS;
 
      /* Clean an LRU entry re-use.  */
-     assert((entry->lru.refcount == LRU_SENTINEL_REFCOUNT) ||
-            (entry->lru.refcount == (LRU_SENTINEL_REFCOUNT - 1)));
+     assert(entry->lru.refcount == (LRU_SENTINEL_REFCOUNT - 1));
 
      if (cache_inode_fd(entry)) {
           cache_inode_close(entry, client, CACHE_INODE_FLAG_REALLYCLOSE,
@@ -536,6 +535,7 @@ lru_try_reap_entry(struct lru_q_base *q)
      if (lru->refcount > LRU_SENTINEL_REFCOUNT + 1) {
           /* Someone took a reference while we were waiting for the
              queue.  */
+          --(lru->refcount);
           pthread_mutex_unlock(&lru->mtx);
           pthread_mutex_unlock(&q->mtx);
           return NULL;
@@ -1369,7 +1369,7 @@ cache_inode_lru_unref(cache_entry_t *entry,
                = lru_select_queue(entry->lru.flags,
                                   entry->lru.lane);
           pthread_mutex_lock(&q->mtx);
-          if (--(entry->lru.refcount) == 0) {
+          if (--(entry->lru.refcount) == LRU_SENTINEL_REFCOUNT - 1) {
                /* Refcount has fallen to zero.  Remove the entry from
                   the queue and mark it as dead. */
                entry->lru.flags = LRU_ENTRY_CONDEMNED;
