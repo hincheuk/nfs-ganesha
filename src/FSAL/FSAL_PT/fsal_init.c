@@ -90,6 +90,8 @@ fsal_status_t
 PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
 {
   fsal_status_t status;
+  int rc;
+  int retryCount;
 
   /* sanity check.  */
   if(!init_info)
@@ -122,7 +124,18 @@ PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
   g_fsi_name_handle_cache.m_count = 0;
 
   /* FSI CCL Layer INIT */
-  int rc = ccl_init(MULTITHREADED);
+  for (retryCount = 0; retryCount < 24; retryCount++) {
+    /* We are retrying to init until successful or
+       retry count has reached the MAX.  This will
+       help to wait for vtl to finish setting up
+       shared memory */
+    rc = ccl_init(MULTITHREADED);
+    if (rc != -1){
+      break;
+    }
+    sleep (10);
+  }
+
   if (rc == -1) {
     FSI_TRACE(FSI_ERR, "ccl_init returned rc = -1, errno = %d", errno);
     Return(ERR_FSAL_FAULT, 0, INDEX_FSAL_Init);
