@@ -27,7 +27,8 @@
 
 #define FSI_IPC_SHMEM_REQ_Q_KEY          0x7654
 #define FSI_IPC_SHMEM_RSP_Q_KEY          0x7655
-
+#define FSI_IPC_CLOSE_HANDLE_REQ_Q_KEY   0x7656
+#define FSI_IPC_CLOSE_HANDLE_RSP_Q_KEY   0x7657
 #define FSI_IPC_SHMEM_KEY                0x7610
 
 // define the number of read buffers per shared memory buffer
@@ -227,6 +228,16 @@ enum {
 };
 
 
+enum e_open_type_flag {
+  STATEFUL_OPEN = 0,
+  STATELESS_OPEN
+};
+
+enum e_nfs_state {
+  NFS_CLOSE = 0,
+  NFS_OPEN,
+  CCL_CLOSE
+};
 // *****************************************************************************
 // * SHARED MEMORY TYPEDEFS and typedef specific enumerations                  *
 // *****************************************************************************
@@ -418,6 +429,15 @@ struct ClientOpFtruncReqMsg {
 struct ClientOpFtruncReqMtext {
   struct CommonMsgHdr         hdr;     // common msg header
   struct ClientOpFtruncReqMsg data;    // custom message data
+};
+
+struct FsiIpcOpShmemReqMsg {
+  enum e_open_type_flag flag; // STATEFUL_OPEN or STATELESS_OPEN
+};
+
+struct FsiIpcOpShmemReqMtext {
+  struct CommonMsgHdr        hdr;      // common msg header
+  struct FsiIpcOpShmemReqMsg data;     // custom message data
 };
 
 // Client Shared Memory Buffer response
