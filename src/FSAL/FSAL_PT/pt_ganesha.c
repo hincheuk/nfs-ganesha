@@ -46,11 +46,9 @@ fsi_cache_name_and_handle(fsal_op_context_t * p_context,
       &g_fsi_name_handle_cache
       .m_entry[g_fsi_name_handle_cache.m_count].m_handle,
       &handle[0],sizeof(handle_entry.m_handle));
-    strncpy(
-      g_fsi_name_handle_cache.m_entry[g_fsi_name_handle_cache.m_count].m_name,
-      name, sizeof(handle_entry.m_name));
-    g_fsi_name_handle_cache.m_entry[g_fsi_name_handle_cache.m_count]
-    .m_name[sizeof(handle_entry.m_name)-1] = '\0';
+    snprintf(g_fsi_name_handle_cache.m_entry[g_fsi_name_handle_cache.m_count].m_name,
+             sizeof(handle_entry.m_name),
+             "%s", name);
     FSI_TRACE(FSI_DEBUG, "FSI - added %s to name cache entry %d\n",
               name,g_fsi_name_handle_cache.m_count);
     pthread_mutex_unlock(&g_fsi_name_handle_mutex);
@@ -80,9 +78,8 @@ fsi_get_name_from_handle(fsal_op_context_t * p_context,
   for (index = 0; index < FSI_MAX_HANDLE_CACHE_ENTRY; index++) {
     if (memcmp(&handle[0], &g_fsi_name_handle_cache.m_entry[index].m_handle, 
         FSI_PERSISTENT_HANDLE_N_BYTES) == 0) {
-      strncpy(name, g_fsi_name_handle_cache.m_entry[index].m_name, 
-              sizeof(handle_entry.m_name));
-      name[sizeof(handle_entry.m_name)-1] = '\0';
+      snprintf(name, sizeof(handle_entry.m_name), "%s",
+               g_fsi_name_handle_cache.m_entry[index].m_name);
       FSI_TRACE(FSI_DEBUG, "FSI - name = %s \n", name);
       pthread_mutex_unlock(&g_fsi_name_handle_mutex);
       return 0;
@@ -108,11 +105,9 @@ fsi_get_name_from_handle(fsal_op_context_t * p_context,
       &g_fsi_name_handle_cache
       .m_entry[g_fsi_name_handle_cache.m_count].m_handle,
       &handle[0],FSI_PERSISTENT_HANDLE_N_BYTES);
-    strncpy(
+    snprintf(
       g_fsi_name_handle_cache.m_entry[g_fsi_name_handle_cache.m_count].m_name,
-      name, sizeof(handle_entry.m_name));
-    g_fsi_name_handle_cache.m_entry[g_fsi_name_handle_cache.m_count]
-    .m_name[sizeof(handle_entry.m_name)-1] = '\0';
+      sizeof(handle_entry.m_name), "%s", name);
     FSI_TRACE(FSI_DEBUG, "FSI - added %s to name cache entry %d\n",
               name,g_fsi_name_handle_cache.m_count);
     pthread_mutex_unlock(&g_fsi_name_handle_mutex);
@@ -142,10 +137,8 @@ fsi_update_cache_name(char * oldname,
       FSI_TRACE(FSI_DEBUG, 
                 "FSI - Updating cache old name[%s]-> new name[%s] \n",
                 g_fsi_name_handle_cache.m_entry[index].m_name, newname);
-      strncpy(g_fsi_name_handle_cache.m_entry[index].m_name, newname, 
-              sizeof(handle_entry.m_name));
-      g_fsi_name_handle_cache.m_entry[index]
-      .m_name[sizeof(handle_entry.m_name)-1] = '\0';
+      snprintf(g_fsi_name_handle_cache.m_entry[index].m_name,
+               sizeof(handle_entry.m_name), "%s", newname);
     }
   }
   pthread_mutex_unlock(&g_fsi_name_handle_mutex);
@@ -417,8 +410,7 @@ ptfsal_readdir(fsal_dir_t      * dir_desc,
 
   readdir_rc = ccl_readdir(&ccl_context, dirp, sbuf);
   if (readdir_rc == 0) {
-    strncpy(fsi_dname, dirp->dname, FSAL_MAX_PATH_LEN);
-    fsi_dname[FSAL_MAX_PATH_LEN-1] = '\0';
+    snprintf(fsi_dname, FSAL_MAX_PATH_LEN, "%s", dirp->dname);
   } else {
     fsi_dname[0] = '\0';
   }
@@ -923,7 +915,8 @@ ptfsal_symlink(fsal_handle_t     * p_parent_directory_handle,
                fsal_path_t       * p_linkcontent,
                fsal_op_context_t * p_context,
                fsal_accessmode_t   accessmode,
-               fsal_handle_t     * p_link_handle)
+               fsal_handle_t     * p_link_handle,
+               char              * p_linkname_full_path)
 {
   ptfsal_handle_t * p_parent_dir_handle =
     (ptfsal_handle_t *)p_parent_directory_handle;
@@ -954,8 +947,8 @@ ptfsal_symlink(fsal_handle_t     * p_parent_directory_handle,
   memset(&pt_path, 0, sizeof(fsal_path_t));
   memcpy(&pt_path, p_linkname, sizeof(fsal_name_t));
 
+  snprintf(p_linkname_full_path, PATH_MAX, "%s", fsi_fullpath);
   rc = ptfsal_name_to_handle(p_context, fsi_fullpath, p_link_handle);
-//  rc = ptfsal_name_to_handle(p_context, &pt_path, p_link_handle);
 
   return rc;
 }

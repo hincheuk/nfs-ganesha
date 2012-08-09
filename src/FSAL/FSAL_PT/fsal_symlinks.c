@@ -96,9 +96,8 @@ PTFSAL_readlink(fsal_handle_t      * p_linkhandle,       /* IN */
   memset(link_content_out, 0, sizeof(link_content_out));
 
   /* Read the link on the filesystem */
-  status =
-      fsal_readlink_by_handle(p_context, p_linkhandle, link_content_out,
-                              sizeof(link_content_out));
+  status = fsal_readlink_by_handle(p_context, p_linkhandle, link_content_out,
+                                   sizeof(link_content_out));
   errsv = errno;
 
   if(FSAL_IS_ERROR(status))
@@ -174,7 +173,7 @@ PTFSAL_symlink(fsal_handle_t      * p_parent_directory_handle,   /* IN */
   int setgid_bit = FALSE;
   fsal_accessflags_t access_mask = 0;
   fsal_attrib_list_t parent_dir_attrs;
-
+  char full_link_name[PATH_MAX];  
   /* sanity checks.
    * note : link_attributes is optional.
    */
@@ -220,7 +219,8 @@ PTFSAL_symlink(fsal_handle_t      * p_parent_directory_handle,   /* IN */
                       p_linkcontent, 
                       p_context,      
                       accessmode,      
-                      p_link_handle);
+                      p_link_handle,
+                      full_link_name);
   errsv = errno;
 
   if(rc) {
@@ -231,7 +231,7 @@ PTFSAL_symlink(fsal_handle_t      * p_parent_directory_handle,   /* IN */
      also a race lower down  */
 
   /* chown the symlink to the current user/group */
-  rc = ptfsal_chown(p_context, p_linkname->name,
+  rc = ptfsal_chown(p_context, full_link_name,
                     p_context->credential.user,
                     setgid_bit ? -1 : (int)p_context->credential.group);
   errsv = errno;
@@ -249,8 +249,7 @@ PTFSAL_symlink(fsal_handle_t      * p_parent_directory_handle,   /* IN */
 
     if(FSAL_IS_ERROR(status)) {
       FSAL_CLEAR_MASK(p_link_attributes->asked_attributes);
-      FSAL_SET_MASK(p_link_attributes->asked_attributes, 
-                        FSAL_ATTR_RDATTR_ERR);
+      FSAL_SET_MASK(p_link_attributes->asked_attributes, FSAL_ATTR_RDATTR_ERR);
     }
 
   }

@@ -176,7 +176,9 @@ int ptfsal_symlink(fsal_handle_t     * p_parent_directory_handle,
                    fsal_path_t       * p_linkcontent,
                    fsal_op_context_t * p_context,
                    fsal_accessmode_t   accessmode,
-                   fsal_handle_t     * p_link_handle);
+                   fsal_handle_t     * p_link_handle,
+                   char              * p_linkname_full_path);
+
 
 int ptfsal_SetDefault_FS_specific_parameter(
     /* param TBD fsal_parameter_t * out_parameter */);
