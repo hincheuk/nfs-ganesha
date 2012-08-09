@@ -925,14 +925,28 @@ ptfsal_symlink(fsal_handle_t     * p_parent_directory_handle,
                fsal_accessmode_t   accessmode,
                fsal_handle_t     * p_link_handle)
 {
-  int rc;
+  ptfsal_handle_t * p_parent_dir_handle =
+    (ptfsal_handle_t *)p_parent_directory_handle;
+
+  char fsi_parent_dir_name[PATH_MAX];
+  int rc = fsi_get_name_from_handle(p_context,
+                                    p_parent_dir_handle->data.handle.f_handle,
+                                    fsi_parent_dir_name);
+  if( rc < 0 ) {
+    FSI_TRACE(FSI_DEBUG, "Failed to get name from handle.");
+    return rc;
+  }
+
+  char fsi_fullpath[PATH_MAX];
+  fsi_get_whole_path(fsi_parent_dir_name, p_linkname->name, fsi_fullpath);
+  FSI_TRACE(FSI_DEBUG, "Full path is %s", fsi_fullpath);
 
   ccl_context_t ccl_context;
   fsal_path_t               pt_path;
 
   ptfsal_set_fsi_handle_data(p_context, &ccl_context);
 
-  rc = ccl_symlink(&ccl_context, p_linkname->name, p_linkcontent->path);
+  rc = ccl_symlink(&ccl_context, fsi_fullpath, p_linkcontent->path);
   if (rc) {
     return rc;
   }
@@ -940,7 +954,8 @@ ptfsal_symlink(fsal_handle_t     * p_parent_directory_handle,
   memset(&pt_path, 0, sizeof(fsal_path_t));
   memcpy(&pt_path, p_linkname, sizeof(fsal_name_t));
 
-  rc = ptfsal_name_to_handle(p_context, &pt_path, p_link_handle);
+  rc = ptfsal_name_to_handle(p_context, fsi_fullpath, p_link_handle);
+//  rc = ptfsal_name_to_handle(p_context, &pt_path, p_link_handle);
 
   return rc;
 }
