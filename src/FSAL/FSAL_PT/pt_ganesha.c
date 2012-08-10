@@ -842,6 +842,8 @@ ptfsal_write(fsal_file_t * file_desc,
               split_count);
     rc = ccl_pwrite(&ccl_context, in_handle, &buf[buf_offset], cur_size, 
                     cur_offset);
+    rc = -1;  // HIN
+    errno = 5; // HIN
     if (rc == -1) {
       return rc;
     }
