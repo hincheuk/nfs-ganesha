@@ -99,7 +99,7 @@ PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
   fsal_status_t status;
 
   /* sanity check.  */
-  if(!init_info)
+  if (!init_info)
     Return(ERR_FSAL_FAULT, 0, INDEX_FSAL_Init);
 
   /* These are initial values until we get our own Ganesha component */
@@ -115,7 +115,7 @@ PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
   status = fsal_internal_init_global(&(init_info->fsal_info),
                                      &(init_info->fs_common_info),
                                      &(init_info->fs_specific_info));
-  if(FSAL_IS_ERROR(status))
+  if (FSAL_IS_ERROR(status))
     Return(status.major, status.minor, INDEX_FSAL_Init);
 
   /* init mutexes */
@@ -137,7 +137,7 @@ PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
   }
 
   rc = ptfsal_pt_thread_init();
-  if (rc == -1) {
+  if (rc != 0) {
     FSI_TRACE(FSI_FATAL, "Failed to create PT ganesha threads rc = %d", rc);
     Return(ERR_FSAL_FAULT, 1, INDEX_FSAL_Init);
   }
@@ -191,15 +191,20 @@ ptfsal_pt_thread_init(void)
   pthread_attr_t attr_thr;
   int            rc;
 
-  pthread_attr_init(&attr_thr);
+  rc = pthread_attr_init(&attr_thr);
+  
+  if (rc != 0) {
+    FSI_TRACE(FSI_FATAL, "Failed to init thread attribute, rc=%d", rc);
+    return rc;
+  }
 
   rc = pthread_create(&g_pthread_closehandle_lisetner,
                       &attr_thr,
                       ptfsal_closeHandle_listener_thread, (void *)NULL);
-  if(rc != 0) {
+  if (rc != 0) {
     FSI_TRACE(FSI_FATAL, "Failed to create CloseHandleListener thread rc[%d]",
               rc);
-    return -1;
+    return rc;
   } else {
     FSI_TRACE(FSI_NOTICE, "CloseHandle listener thread created successfully");
   }
@@ -207,10 +212,10 @@ ptfsal_pt_thread_init(void)
   rc = pthread_create(&g_pthread_polling_closehandler,
                       &attr_thr,
                       ptfsal_polling_closeHandler_thread, (void *)NULL);
-  if(rc != 0) {
+  if (rc != 0) {
     FSI_TRACE(FSI_FATAL, "Failed to create polling close handler thread rc[%d]",
               rc);
-    return -1;
+    return rc;
   } else {
     FSI_TRACE(FSI_NOTICE, "Polling close handler created successfully");
   }

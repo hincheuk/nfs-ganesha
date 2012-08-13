@@ -3,8 +3,9 @@
 // All Rights Reserved
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
-// Filename:    pt_ganesha.c
-// Description: Main layer for PT's Ganesha FSAL
+// Filename:    fsal_close_listener.c
+// Description: Thread to handle close on open processing and polling close
+//              processing.
 // Author:      FSI IPC Team
 // -----------------------------------------------------------------------------
 #include "pt_ganesha.h"
@@ -53,7 +54,7 @@ void * ptfsal_closeHandle_listener_thread(void * args)
   int msg_rc;
   int msg_bytes;
   int close_rc;
-  struct CommonMsgHdr *msgHdr;
+  struct CommonMsgHdr * msgHdr;
 
   SetNameFunction("CloseOnOpen Handler");
 
@@ -116,9 +117,7 @@ void ptfsal_close_timedout_handle_bkg(void)
   int close_rc;
   int handle_closed_in_loop;
   int rc;
-  int handle_count;
-
-  handle_count = g_fsi_handles.m_count;
+  int handle_count = g_fsi_handles.m_count;
 
   for (index = FSI_CIFS_RESERVED_STREAMS;
        index < handle_count;
@@ -132,6 +131,7 @@ void ptfsal_close_timedout_handle_bkg(void)
     handle_closed_in_loop = 0;
     rc = ccl_up_mutex_lock(&g_close_handle_mutex);
     if (rc != 0) {
+      FSI_TRACE(FSI_ERR, "Failed to close handle mutex");
       break;
     }
 
@@ -164,7 +164,7 @@ void ptfsal_close_timedout_handle_bkg(void)
   }
 }
 
-void * ptfsal_polling_closeHandler_thread(void *args)
+void * ptfsal_polling_closeHandler_thread(void * args)
 {
   SetNameFunction("Polling Close Handler");
   while (1) {
@@ -180,9 +180,8 @@ int ptfsal_find_oldest_handle(void)
   int index;
   time_t oldest_time = time(NULL);
   time_t current_time = oldest_time;
-  int rc;
+  int rc = ccl_up_mutex_lock(&g_handle_mutex);
 
-  rc = ccl_up_mutex_lock(&g_handle_mutex);
   if (rc == 0) {
     for (index = FSI_CIFS_RESERVED_STREAMS;
          index < g_fsi_handles.m_count;
@@ -202,13 +201,16 @@ int ptfsal_find_oldest_handle(void)
       }
     }
     ccl_up_mutex_unlock(&g_handle_mutex);
+  } else {
+    FSI_TRACE(FSI_ERR, "Failed to lock handle mutex");
   }
+  
   FSI_TRACE(FSI_NOTICE, "fsi file handle = %d", fsihandle);
 
   return fsihandle;
 }
 
-void ptfsal_update_handle_nfs_state(int handle_index,
+void ptfsal_update_handle_nfs_state(int              handle_index,
                                     enum e_nfs_state state)
 {
   int rc;
@@ -223,7 +225,10 @@ void ptfsal_update_handle_nfs_state(int handle_index,
   if (rc == 0) {
     g_fsi_handles.m_handle[handle_index].m_nfs_state = state;
     ccl_up_mutex_unlock(&g_handle_mutex);
+  } else {
+    FSI_TRACE(FSI_ERR, "Failed to handle mutex");
   }
+
 }
 
 int ptfsal_explicit_close_for_nfs(int handle_index_to_close)

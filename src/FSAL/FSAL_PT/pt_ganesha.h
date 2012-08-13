@@ -215,7 +215,7 @@ void *ptfsal_closeHandle_listener_thread(void *args);
 
 int ptfsal_find_oldest_handle(void);
 
-void ptfsal_update_handle_nfs_state(int handle_index,
+void ptfsal_update_handle_nfs_state(int              handle_index,
                                     enum e_nfs_state state);
 
 int ptfsal_explicit_close_for_nfs(int handle_index_to_close);
