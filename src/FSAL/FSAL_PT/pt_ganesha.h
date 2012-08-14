@@ -37,6 +37,7 @@
 #include <sys/msg.h>
 #include <sys/stat.h>
 #include <sys/param.h>
+#include <signal.h>
 
 #define fsi_dirent                 dirent
 #define FSI_MAX_HANDLE_CACHE_ENTRY 2500
