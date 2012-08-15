@@ -70,8 +70,7 @@ int g_ptfsal_debug_level;
 int g_ptfsal_comp_num;
 int g_ptfsal_comp_level;
 
-static int ptfsal_closeHandle_listener_thread_init(void);
-static int ptfsal_polling_closeHandler_thread_init(void);
+static int ptfsal_pt_thread_init(void);
 
 /**
  * FSAL_Init : Initializes the FileSystem Abstraction Layer.
@@ -100,11 +99,11 @@ PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
   fsal_status_t status;
 
   /* sanity check.  */
-  if(!init_info)
+  if (!init_info)
     Return(ERR_FSAL_FAULT, 0, INDEX_FSAL_Init);
 
   /* These are initial values until we get our own Ganesha component */
-  g_ptfsal_debug_level = FSI_NOTICE;   // TODO get our own mechanism to set
+  g_ptfsal_debug_level = FSI_NOTICE;  // TODO get our own mechanism to set
                                       //  or have these settable by Ganesha
                                       //  debug control
   g_ptfsal_comp_num = (int) COMPONENT_FSAL;  // till we get our own comp
@@ -116,7 +115,7 @@ PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
   status = fsal_internal_init_global(&(init_info->fsal_info),
                                      &(init_info->fs_common_info),
                                      &(init_info->fs_specific_info));
-  if(FSAL_IS_ERROR(status))
+  if (FSAL_IS_ERROR(status))
     Return(status.major, status.minor, INDEX_FSAL_Init);
 
   /* init mutexes */
@@ -129,7 +128,6 @@ PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
   pthread_mutex_init(&g_fsi_name_handle_mutex, NULL);
 
   g_fsi_name_handle_cache.m_count = 0;
- 
 
   /* FSI CCL Layer INIT */
   int rc = ccl_init(MULTITHREADED);
@@ -138,19 +136,9 @@ PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
     Return(ERR_FSAL_FAULT, 0, INDEX_FSAL_Init);
   }
 
-  FSI_TRACE(FSI_NOTICE, "About to call "
-            "ptfsal_closeHandle_listener_thread_init");
-  if (ptfsal_closeHandle_listener_thread_init() == -1) {
-    FSI_TRACE(FSI_ERR, "ptfsal_closeHandle_listener_thread_init "
-              "returned rc = -1");
-    Return(ERR_FSAL_FAULT, 1, INDEX_FSAL_Init);
-  }
-
-  FSI_TRACE(FSI_NOTICE, "About to call "
-            "ptfsal_polling_closeHandler_thread_init");
-  if (ptfsal_polling_closeHandler_thread_init() == -1) {
-    FSI_TRACE(FSI_ERR, "ptfsal_polling_closeHandler_thread_init "
-              "returned rc = -1");
+  rc = ptfsal_pt_thread_init();
+  if (rc != 0) {
+    FSI_TRACE(FSI_FATAL, "Failed to create PT ganesha threads rc = %d", rc);
     Return(ERR_FSAL_FAULT, 1, INDEX_FSAL_Init);
   }
 
@@ -161,8 +149,8 @@ PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
 // ----------------------------------------------------------------------------
 //   CCL Up Call defintions
 // ----------------------------------------------------------------------------
-
-int ccl_up_mutex_lock( pthread_mutex_t * pmutex)
+int 
+ccl_up_mutex_lock( pthread_mutex_t * pmutex)
 {
   FSI_TRACE(FSI_DEBUG, "requesting lock on 0x%lx", (unsigned int) pmutex);
   int rc = pthread_mutex_lock( pmutex);
@@ -171,9 +159,11 @@ int ccl_up_mutex_lock( pthread_mutex_t * pmutex)
   } else {
     FSI_TRACE(FSI_DEBUG, "lock 0x%lx acuired", (unsigned int) pmutex);
   }
+  return rc;
 }
 
-int ccl_up_mutex_unlock( pthread_mutex_t * pmutex)
+int 
+ccl_up_mutex_unlock( pthread_mutex_t * pmutex)
 {
   FSI_TRACE(FSI_DEBUG, "unlocking 0x%lx", (unsigned int) pmutex);
   int rc = pthread_mutex_unlock( pmutex);
@@ -184,9 +174,11 @@ int ccl_up_mutex_unlock( pthread_mutex_t * pmutex)
     FSI_TRACE(FSI_DEBUG, "successfully unlocked 0x%lx ", 
               (unsigned int) pmutex);
   }
+  return rc;
 }
 
-unsigned long ccl_up_self()
+unsigned long 
+ccl_up_self()
 {
    unsigned long my_tid = pthread_self();
    FSI_TRACE(FSI_DEBUG, "tid = %ld ", my_tid);
@@ -194,50 +186,40 @@ unsigned long ccl_up_self()
 }
 
 static int
-ptfsal_closeHandle_listener_thread_init(void)
+ptfsal_pt_thread_init(void)
 {
-   pthread_attr_t attr_thr;
-   int            rc;
+  pthread_attr_t attr_thr;
+  int            rc;
 
-   /* Init the thread in charge of renewing the client id */
-   /* Init for thread parameter (mostly for scheduling) */
-   pthread_attr_init(&attr_thr);
+  rc = pthread_attr_init(&attr_thr);
+  
+  if (rc != 0) {
+    FSI_TRACE(FSI_FATAL, "Failed to init thread attribute, rc=%d", rc);
+    return rc;
+  }
 
-   rc = pthread_create(&g_pthread_closehandle_lisetner,
-                       &attr_thr,
-                       ptfsal_closeHandle_listener_thread, (void *)NULL);
+  rc = pthread_create(&g_pthread_closehandle_lisetner,
+                      &attr_thr,
+                      ptfsal_closeHandle_listener_thread, (void *)NULL);
+  if (rc != 0) {
+    FSI_TRACE(FSI_FATAL, "Failed to create CloseHandleListener thread rc[%d]",
+              rc);
+    return rc;
+  } else {
+    FSI_TRACE(FSI_NOTICE, "CloseHandle listener thread created successfully");
+  }
 
-   if(rc != 0) {
-     FSI_TRACE(FSI_ERR, "Failed to create CloseHandleListener thread rc[%d]",
-               rc);
-     return -1;
-   }
+  rc = pthread_create(&g_pthread_polling_closehandler,
+                      &attr_thr,
+                      ptfsal_polling_closeHandler_thread, (void *)NULL);
+  if (rc != 0) {
+    FSI_TRACE(FSI_FATAL, "Failed to create polling close handler thread rc[%d]",
+              rc);
+    return rc;
+  } else {
+    FSI_TRACE(FSI_NOTICE, "Polling close handler created successfully");
+  }
 
-   FSI_TRACE(FSI_NOTICE, "CloseHandle listener thread created successfully");
-   return 0;
-}
-
-static int
-ptfsal_polling_closeHandler_thread_init(void)
-{
-   pthread_attr_t attr_thr;
-   int            rc;
-
-   /* Init the thread in charge of renewing the client id */
-   /* Init for thread parameter (mostly for scheduling) */
-   pthread_attr_init(&attr_thr);
-
-   rc = pthread_create(&g_pthread_polling_closehandler,
-                       &attr_thr,
-                       ptfsal_polling_closeHandler_thread, (void *)NULL);
-
-   if(rc != 0) {
-     FSI_TRACE(FSI_ERR, "Failed to create polling close handler thread rc[%d]",
-               rc);
-     return -1;
-   }
-
-   FSI_TRACE(FSI_NOTICE, "Polling close handler created successfully");
-   return 0;
+  return 0;
 }
 
