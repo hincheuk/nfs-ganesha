@@ -134,6 +134,8 @@ void ptfsal_close_timedout_handle_bkg(void)
       ccl_up_mutex_unlock(&g_close_handle_mutex);
       if (close_rc == -1) {
         FSI_TRACE(FSI_ERR, "Failed to implicitly close handle[%d]",index);
+      } else {
+        ptfsal_update_handle_nfs_state(index, CCL_CLOSE);
       }
       usleep(1000);
     } else {
