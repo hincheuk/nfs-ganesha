@@ -145,6 +145,7 @@ enum {
   ClientOpCreateFile,           // open_file
   ClientOpRename,               // rename
   ClientOpStat,                 // get_attributes
+  ClientOpStatByHandle,         // get attributes by handle
   ClientOpLstat,                // ?
   ClientOpUnlink,               // delete_file*
   ClientOpChmod,                // set_attributes
@@ -545,6 +546,32 @@ struct ClientOpStatRspMtext {
   struct CommonMsgHdr       hdr;       // common msg header
   struct ClientOpStatRspMsg data;      // custom message data
 };
+
+// ClientOpStatByHandle Server Response Message
+typedef struct ClientOpStatRsp ClientOpStatByHandleRsp;
+
+// ClientOpStatByHandle Server Request Message
+struct ClientOpStatByHandleReqMsg {
+  uint64_t                uid;                 // user ID
+  uint64_t                gid;                 // group ID
+  struct PersistentHandle persistentHandle;
+};
+
+struct ClientOpStatByHandleReqMtext {
+  struct CommonMsgHdr               hdr;       // common msg header
+  struct ClientOpStatByHandleReqMsg data;      // custom message data
+};
+
+// ClientOpStatByHandle Server Response Message
+struct ClientOpStatByHandleRspMsg {
+  ClientOpStatByHandleRsp statInfo;            // Stat info
+};
+
+struct ClientOpStatByHandleRspMtext {
+  struct CommonMsgHdr               hdr;       // common msg header
+  struct ClientOpStatByHandleRspMsg data;      // custom message data
+};
+
 
 // ClientOpReadDir Server Request Message
 struct ClientOpReadDirReqMsg {
