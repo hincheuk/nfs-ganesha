@@ -10,11 +10,13 @@
 #include "pt_ganesha.h"
 #include <unistd.h>
 #include "log.h"
+#include <stdio.h>
 int g_closeHandle_req_msgq;
 int g_closeHandle_rsp_msgq;
 extern struct file_handles_struct_t g_fsi_handles; // FSI client handles
 pthread_mutex_t g_close_handle_mutex; // file handle processing mutex
-
+static int closeOnOpenTimeout = PTFSAL_OLDEST_HANDLE_TIMEOUT_SEC;
+static int pollingTimeout = PTFSAL_POLLING_HANDLE_TIMEOUT_SEC;
 int ptfsal_closeHandle_attach_to_queues(void)
 {
   int rc;
@@ -55,6 +57,10 @@ void *ptfsal_closeHandle_listener_thread(void *args)
   struct CommonMsgHdr         * p_hdr;
   int close_rc;
   struct CommonMsgHdr *msgHdr;
+  FILE *fp = NULL;
+  int timeout1, timeout2;
+  int numRead = 0;
+
   SetNameFunction("PT FSAL CloseOnOpen Handler");
 
   rc = ptfsal_closeHandle_attach_to_queues();
@@ -62,6 +68,22 @@ void *ptfsal_closeHandle_listener_thread(void *args)
     exit (1);
   }
 
+  fp=fopen("/root/timeoutvalue","r");  
+  FSI_TRACE(FSI_NOTICE, "file pointer [0x%p]",(void *) fp);
+  if (fp != NULL)
+  {
+     numRead = fscanf (fp, "%d %d", &timeout1, &timeout2);
+     if (numRead == 2)
+     {
+       closeOnOpenTimeout = timeout1;
+       pollingTimeout     = timeout2;
+     }
+     fclose (fp);
+  }
+
+  FSI_TRACE(FSI_NOTICE, "CloseOnOpen timeout[%d sec] Polling timeout[%d sec]",
+            closeOnOpenTimeout, pollingTimeout);
+ 
   pthread_mutex_init(&g_close_handle_mutex, NULL);
   while (1) {
     msg_bytes = rcv_msg_wait(g_closeHandle_req_msgq,
@@ -118,7 +140,7 @@ void ptfsal_close_timedout_handle_bkg(void)
     if ((g_fsi_handles.m_handle[index].m_nfs_state == NFS_CLOSE) &&
         (g_fsi_handles.m_handle[index].m_hndl_in_use) &&
         ((current_time - g_fsi_handles.m_handle[index].m_last_io_time)
-         >= PTFSAL_POLLING_HANDLE_TIMEOUT_SEC)) {
+         >= pollingTimeout)) {
       /* We've found timed out handle and we are sending an explicit
        * close to close it out.
        *
@@ -150,7 +172,7 @@ void *ptfsal_polling_closeHandler_thread(void *args)
   while (1) {
     FSI_TRACE(FSI_INFO, "Periodic check for opened handle to close");
     ptfsal_close_timedout_handle_bkg();
-    sleep (PTFSAL_POLLING_HANDLE_TIMEOUT_SEC);
+    sleep (pollingTimeout);
   }
 }
 
@@ -175,7 +197,7 @@ int ptfsal_find_oldest_handle(void)
         (g_fsi_handles.m_handle[index].m_hndl_in_use) &&
         (g_fsi_handles.m_handle[index].m_nfs_state == NFS_CLOSE) &&
         (current_time - g_fsi_handles.m_handle[index].m_last_io_time)
-         >= PTFSAL_OLDEST_HANDLE_TIMEOUT_SEC) {
+         >= closeOnOpenTimeout) {
         oldest_time = g_fsi_handles.m_handle[index].m_last_io_time;
         fsihandle = index;
     }
