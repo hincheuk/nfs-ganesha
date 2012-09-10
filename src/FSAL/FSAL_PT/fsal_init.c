@@ -69,7 +69,8 @@ pthread_t g_pthread_polling_closehandler;
 
 static int ptfsal_closeHandle_listener_thread_init(void);
 static int ptfsal_polling_closeHandler_thread_init(void);
-
+void *ptfsal_parallel_close_thread(void *args);
+void *ptfsal_closeHandle_listener_thread(void *args);
 /**
  * FSAL_Init : Initializes the FileSystem Abstraction Layer.
  *
@@ -237,6 +238,9 @@ PTFSAL_terminate()
   int minor = 0;
   int major = ERR_FSAL_NO_ERROR;
   int rc;
+  pthread_attr_t attr_thr;
+  pthread_t parallelCloseThreads[FSI_MAX_STREAMS + FSI_CIFS_RESERVED_STREAMS];
+  int parallelCloseThreadMap[FSI_MAX_STREAMS + FSI_CIFS_RESERVED_STREAMS];
 
   FSI_TRACE(FSI_NOTICE, "Terminating FSAL_PT");
   rc = ccl_up_mutex_lock(&g_handle_mutex);
@@ -246,7 +250,10 @@ PTFSAL_terminate()
     major = posix2fsal_error(EIO);
     ReturnCode(major, minor);
   }
-  
+
+  pthread_attr_init(&attr_thr);  
+  memset(&parallelCloseThreadMap[0], 0x00, sizeof (parallelCloseThreadMap));
+
   for (index = FSI_CIFS_RESERVED_STREAMS;
        index < g_fsi_handles.m_count;
        index++) {
@@ -256,23 +263,28 @@ PTFSAL_terminate()
   
         // ignore error code, just trying to clean up while going down
         // and want to continue trying to close out other open files
-        ccl_up_mutex_unlock(&g_handle_mutex);
-        rc = ptfsal_implicit_close_for_nfs(index);
-        if (rc != FSI_IPC_EOK) {
-          FSI_TRACE(FSI_NOTICE, "Failed to close index: %d, close_rc = %d "
-                    "ignoring and moving on", index, rc);
-          closureFailure = TRUE;
-        }
-        rc = ccl_up_mutex_lock(&g_handle_mutex);
-        if (rc != 0) {
-          FSI_TRACE(FSI_ERR, "Failed to lock handle mutex");
-          minor = 2;
-          major = posix2fsal_error(EIO);
-          ReturnCode(major, minor);
-        }
+        rc = pthread_create(&parallelCloseThreads[index],
+                            &attr_thr,
+                            ptfsal_parallel_close_thread, &index);
+
+        if(rc != 0) {
+          FSI_TRACE(FSI_ERR, "Failed to create parallel close thread for handle[%d] rc[%d]",
+                    index, rc);
+        } else {
+          parallelCloseThreadMap[index] = 1;
+        } 
       }
     }
   }
+
+  for (index = FSI_CIFS_RESERVED_STREAMS;
+       index < FSI_MAX_STREAMS + FSI_CIFS_RESERVED_STREAMS;
+       index++) {
+    if (parallelCloseThreads[index] == 1) {
+      pthread_join(parallelCloseThreads[index], NULL);
+    }
+  }
+  
   ccl_up_mutex_unlock(&g_handle_mutex);
 
   if (closureFailure) {
@@ -308,3 +320,14 @@ PTFSAL_terminate()
   ReturnCode(major, minor);
 }
 
+
+void *ptfsal_parallel_close_thread(void *args)
+{
+   int index = *((int *) args);
+
+   FSI_TRACE(FSI_NOTICE, "Closing handle[%d]", index);
+   ptfsal_implicit_close_for_nfs1(index);
+
+   pthread_exit(0);
+
+}
