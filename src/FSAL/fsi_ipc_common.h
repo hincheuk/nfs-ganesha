@@ -386,6 +386,11 @@ struct ClientOpOpenRspMtext {
 // ClientOpClose Client Request Message
 struct ClientOpCloseReqMsg {
   uint64_t resourceHandle;      // resource handle to release
+  uint64_t responseNotNeeded;   // Specify if we PT server
+                                // needs to send the response
+                                // Used in close on terminate
+                                // in ganesha.
+                                // 1 = NOT needed, 0 = Needed
 };
 
 struct ClientOpCloseReqMtext {
@@ -571,7 +576,6 @@ struct ClientOpStatByHandleRspMtext {
   struct CommonMsgHdr               hdr;       // common msg header
   struct ClientOpStatByHandleRspMsg data;      // custom message data
 };
-
 
 // ClientOpReadDir Server Request Message
 struct ClientOpReadDirReqMsg {

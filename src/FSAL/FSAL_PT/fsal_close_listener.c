@@ -219,3 +219,22 @@ int ptfsal_implicit_close_for_nfs(int handle_index_to_close)
 
 }
 
+int ptfsal_implicit_close_for_nfs1(int handle_index_to_close)
+{
+  ccl_context_t context;
+
+  if (ccl_check_handle_index(handle_index_to_close) < 0) {
+    FSI_TRACE(FSI_ERR, "Invalid handle index to close = %d",
+              handle_index_to_close);
+    return -1;
+  }
+
+  memset (&context, 0, sizeof(context));
+  context.export_id = g_fsi_handles.m_handle[handle_index_to_close].m_exportId;
+  context.uid       = geteuid();
+  context.gid       = getegid();
+  FSI_TRACE(FSI_NOTICE, "Closing handle [%d]", handle_index_to_close);
+  return (ccl_close_fire_and_forget(&context, handle_index_to_close));
+
+}
+

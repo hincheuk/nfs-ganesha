@@ -880,6 +880,8 @@ int ccl_symlink(ccl_context_t * pvfs_handle,
                 const char    * path,
                 const char    * link_content);
 void ccl_update_handle_last_io_timestamp(int handle_index);
+int ccl_close_fire_and_forget(ccl_context_t * handle,
+                              int             handle_index);
 // ---------------------------------------------------------------------------
 // CCL Up Call ptorotypes - both the Samba VFS layer and the Ganesha PTFSAL
 //     Layer provide a copy of these functions and CCL call them (up calls)
