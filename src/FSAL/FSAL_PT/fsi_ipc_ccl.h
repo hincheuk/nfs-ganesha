@@ -134,6 +134,8 @@ compile_time_check_func(const char * fmt, ...)
 }
 #define CCL_CLOSE_STYLE_NORMAL             0
 #define CCL_CLOSE_STYLE_FIRE_AND_FORGET    1
+#define CCL_CLOSE_STYLE_NO_INDEX           2
+
 #define FSAL_MAX_PATH_LEN PATH_MAX
 
 extern int       g_shm_id;              // SHM ID
@@ -717,7 +719,9 @@ int ccl_open(ccl_context_t   * handle,
               mode_t                mode);
 int ccl_close(ccl_context_t * handle,
               int             handle_index,
-              int             close_style);
+              int             close_style,
+              uint64_t        fsHandle,
+              uint64_t        shm_handle[]);
 int merge_errno_rc(int rc_a,
                    int rc_b);
 int get_any_io_responses(int     handle_index,
