@@ -191,7 +191,7 @@ int fsi_cache_insertEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatTo
   int i;
 
   if (cacheTable == NULL) {
-    FSI_TRACE (FSI_ERR, "[ERROR] parm check");
+    FSI_TRACE (FSI_ERR, "param check");
     return -1;
   }
 
@@ -200,7 +200,7 @@ int fsi_cache_insertEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatTo
   ptfsal_print_handle(whatToInsert->key);
 
   if (cacheTable->cacheMetaData.numElementsOccupied == cacheTable->cacheMetaData.maxNumOfCacheEntries) {
-    FSI_TRACE (FSI_ERR, "[ERROR] cache table is full");
+    FSI_TRACE (FSI_ERR, "Cache table is full.  Cache ID = %d", cacheTable->cacheMetaData.cacheTableID);
     return -1;
   }
 
@@ -212,11 +212,11 @@ int fsi_cache_insertEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatTo
   rc = fsi_cache_getInsertionPoint(cacheTable, whatToInsert, &whereToInsert);
 
   if (rc == 0) {
-    FSI_TRACE (FSI_ERR, "[ERROR] duplicated entry");
+    FSI_TRACE (FSI_WARNING, "Duplicated entry");
     // Log result of the insert
-    FSI_TRACE(FSI_INFO, "Attempted to insert the following handle:");
+    FSI_TRACE(FSI_WARNING, "Attempted to insert the following handle:");
     ptfsal_print_handle(whatToInsert->key);
-    FSI_TRACE(FSI_INFO, "Dumping cache table keys currently:");
+    FSI_TRACE(FSI_WARNING, "Dumping cache table keys currently:");
     for (i=0; i<cacheTable->cacheMetaData.numElementsOccupied; i++) {
       ptfsal_print_handle(cacheTable->cacheEntries[i].key);
     }
@@ -237,6 +237,7 @@ int fsi_cache_insertEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatTo
 
   ptr = (void *) malloc(cacheTable->cacheMetaData.dataSizeInBytes);
   if (ptr == NULL) {
+    free (cacheTable->cacheEntries[whereToInsert].key);
     FSI_TRACE (FSI_ERR, "Failed allocate memory for inserting data");
     return -1;
   }

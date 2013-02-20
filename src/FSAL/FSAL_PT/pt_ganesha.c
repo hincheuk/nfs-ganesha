@@ -774,11 +774,6 @@ ptfsal_open_by_handle(fsal_op_context_t * p_context,
     pthread_mutex_lock(&g_fsi_name_handle_mutex);
     rc = fsi_cache_insertEntry(&g_fsi_name_handle_cache_opened_files, &cacheEntry);
     pthread_mutex_unlock(&g_fsi_name_handle_mutex);
-    if (rc != FSI_IPC_EOK) {
-      FSI_TRACE(FSI_ERR, "Failed to insert cache entry to cache ID = %d",
-          g_fsi_name_handle_cache_opened_files.cacheMetaData.cacheTableID);
-      ptfsal_print_handle(p_fsi_handle->data.handle.f_handle);
-    }
   }
 
   if (g_ptfsal_context_flag) {
