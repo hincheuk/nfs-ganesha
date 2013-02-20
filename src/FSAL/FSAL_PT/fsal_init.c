@@ -53,6 +53,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include "pt_ganesha.h"
+#include "pt_util_cache.h"
 
 pthread_mutex_t g_dir_mutex; // dir handle mutex
 pthread_mutex_t g_acl_mutex; // acl handle mutex
@@ -66,7 +67,7 @@ pthread_mutex_t g_io_mutex;
 pthread_mutex_t g_statistics_mutex;
 pthread_t g_pthread_closehandle_lisetner;
 pthread_t g_pthread_polling_closehandler;
-
+CACHE_TABLE_T g_fsi_name_handle_cache_opened_files;
 #define COMPONENT_FSAL_PT  5   // COMPONENT_FSAL
 
 int PTFSAL_log(int level, const char * message)
@@ -111,6 +112,7 @@ PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
 {
   fsal_status_t status;
   int i;
+  CACHE_TABLE_INIT_PARAM cacheTableInitParam;
 
   /* sanity check.  */
   if(!init_info)
@@ -176,6 +178,14 @@ PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
     Return(ERR_FSAL_FAULT, 1, INDEX_FSAL_Init);
   }
 
+  cacheTableInitParam.cacheKeyComprefn = &fsi_cache_handle2name_keyCompare;
+  cacheTableInitParam.cacheTableID     = CACHE_ID_192_FRONT_END_HANDLE_TO_NAME_CACHE;
+  cacheTableInitParam.dataSizeInBytes  = sizeof(CACHE_ENTRY_DATA_HANDLE_TO_NAME_T);
+  cacheTableInitParam.keyLengthInBytes = sizeof(g_fsi_name_handle_cache.m_entry[0].m_handle);
+  cacheTableInitParam.maxNumOfCacheEntries = FSI_MAX_STREAMS + FSI_CIFS_RESERVED_STREAMS;
+
+  fsi_cache_table_init(&g_fsi_name_handle_cache_opened_files,
+                       &cacheTableInitParam);
   /* Regular exit */
   Return(ERR_FSAL_NO_ERROR, 0, INDEX_FSAL_Init);
 }
