@@ -191,6 +191,7 @@ int ptfsal_implicit_close_for_nfs(int handle_index_to_close, int close_style)
   int close_rc;
   CACHE_TABLE_ENTRY_T cacheEntry;
   char fsi_name[PATH_MAX];
+  char key[FSI_PERSISTENT_HANDLE_N_BYTES];
   int rc;
 
   if (ccl_check_handle_index(handle_index_to_close) < 0) {
@@ -206,7 +207,10 @@ int ptfsal_implicit_close_for_nfs(int handle_index_to_close, int close_style)
   FSI_TRACE(FSI_NOTICE, "Closing handle [%d] close_style[%d]", handle_index_to_close, close_style);
 
   memset (&cacheEntry, 0x00, sizeof(CACHE_TABLE_ENTRY_T));
-  cacheEntry.key =  &g_fsi_handles.m_handle[handle_index_to_close].m_stat.st_persistentHandle.handle[0];
+  memcpy (key,
+          &g_fsi_handles.m_handle[handle_index_to_close].m_stat.st_persistentHandle.handle[0],
+          FSI_PERSISTENT_HANDLE_N_BYTES);
+  cacheEntry.key =  key;
 
   close_rc = ccl_close(&context, handle_index_to_close, close_style);
 

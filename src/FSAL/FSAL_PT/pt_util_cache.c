@@ -12,9 +12,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-//#include "pt_ganesha.h"
+
 #include "fsi_ipc_ccl.h"
 #include "pt_util_cache.h"
+
+// If we want to be able to dump keys in cache table, define the following
+//#define PRINT_CACHE_KEY
 
 // ----------------------------------------------------------------------------
 // Initialize the cache table and setup memory
@@ -48,32 +51,6 @@ int fsi_cache_table_init(CACHE_TABLE_T *cacheTableToInit,
     return -1;
   }
 
-/*  for (i=0; i<cacheTableInitParam->maxNumOfCacheEntries; i++) {
-    cacheTableToInit->cacheEntries[i].data = malloc (cacheTableInitParam->dataSizeInBytes);
-    if (cacheTableToInit->cacheEntries[i].data == NULL) {
-      FSI_TRACE(FSI_ERROR, "Failed to allocate space for data member in cache."
-                "Cache Table ID = %d", cacheTableInitParam->cacheTableID);
-      for (freeIdx=0; freeIdx<(i-1); freeIdx ++) {
-        free (cacheTableToInit->cacheEntries[freeIdx].key);
-        free (cacheTableToInit->cacheEntries[freeIdx].data);
-      }
-      free (cacheTableToInit->cacheEntries);
-      return -1;
-    }
-
-    cacheTableToInit->cacheEntries[i].key = malloc(cacheTableInitParam->keyLengthInBytes);
-    if (cacheTableToInit->cacheEntries[i].key == NULL) {
-      FSI_TRACE(FSI_ERROR, "Failed to allocate space for key in cache."
-                "Cache Table ID = %d", cacheTableInitParam->cacheTableID);
-      for (freeIdx=0; freeIdx<(i-1); freeIdx ++) {
-        free (cacheTableToInit->cacheEntries[freeIdx].key);
-        free (cacheTableToInit->cacheEntries[freeIdx].data);
-      }
-      free (cacheTableToInit->cacheEntries[i].data);
-      free (cacheTableToInit->cacheEntries);
-      return -1;
-    }
-  } */
   cacheTableToInit->cacheMetaData.keyLengthInBytes =
       cacheTableInitParam->keyLengthInBytes;
   cacheTableToInit->cacheMetaData.dataSizeInBytes =
@@ -204,10 +181,9 @@ int fsi_cache_insertEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatTo
     return -1;
   }
 
-  FSI_TRACE(FSI_INFO, "Dumping cache table keys before insertion:");
-  for (i=0; i<cacheTable->cacheMetaData.numElementsOccupied; i++) {
-    ptfsal_print_handle(cacheTable->cacheEntries[i].key);
-  }
+  fsi_cache_handle2name_dumpTableKeys(FSI_INFO,
+                                      cacheTable,
+                                      "Dumping cache table keys before insertion:");
 
   rc = fsi_cache_getInsertionPoint(cacheTable, whatToInsert, &whereToInsert);
 
@@ -216,10 +192,9 @@ int fsi_cache_insertEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatTo
     // Log result of the insert
     FSI_TRACE(FSI_WARNING, "Attempted to insert the following handle:");
     ptfsal_print_handle(whatToInsert->key);
-    FSI_TRACE(FSI_WARNING, "Dumping cache table keys currently:");
-    for (i=0; i<cacheTable->cacheMetaData.numElementsOccupied; i++) {
-      ptfsal_print_handle(cacheTable->cacheEntries[i].key);
-    }
+    fsi_cache_handle2name_dumpTableKeys(FSI_WARNING,
+                                        cacheTable,
+                                        "Dumping cache table keys currently:");
     return -1;
   }
 
@@ -250,13 +225,11 @@ int fsi_cache_insertEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatTo
           whatToInsert->data,
           cacheTable->cacheMetaData.dataSizeInBytes);
 
-//  memcpy(&cacheTable->cacheEntries[whereToInsert], whatToInsert, sizeof(CACHE_TABLE_ENTRY_T));
   cacheTable->cacheMetaData.numElementsOccupied++;
 
-  FSI_TRACE(FSI_INFO, "Dumping cache table keys after insertion:");
-  for (i=0; i<cacheTable->cacheMetaData.numElementsOccupied; i++) {
-    ptfsal_print_handle(cacheTable->cacheEntries[i].key);
-  }
+  fsi_cache_handle2name_dumpTableKeys(FSI_INFO,
+                                      cacheTable,
+                                      "Dumping cache table keys after insertion:");
   return FSI_IPC_EOK;
 }
 
@@ -288,10 +261,9 @@ int fsi_cache_deleteEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatTo
     return -1;
   }
 
-  FSI_TRACE(FSI_INFO, "Dumping cache table keys before deletion:");
-  for (i=0; i<cacheTable->cacheMetaData.numElementsOccupied; i++) {
-    ptfsal_print_handle(cacheTable->cacheEntries[i].key);
-  }
+  fsi_cache_handle2name_dumpTableKeys(FSI_INFO,
+                                      cacheTable,
+                                      "Dumping cache table keys before deletion:");
 
   entryMatched = bsearch(whatToDelete,
                          &cacheTable->cacheEntries[0],
@@ -328,11 +300,10 @@ int fsi_cache_deleteEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatTo
   }
   cacheTable->cacheMetaData.numElementsOccupied--;
 
-  FSI_TRACE(FSI_INFO, "Dumping cache table keys after deletion:");
-  for (i=0; i<cacheTable->cacheMetaData.numElementsOccupied; i++) {
-    ptfsal_print_handle(cacheTable->cacheEntries[i].key);
-  }
 
+  fsi_cache_handle2name_dumpTableKeys(FSI_INFO,
+                                      cacheTable,
+                                      "Dumping cache table keys after deletion:");
   return FSI_IPC_EOK;
 }
 
@@ -385,67 +356,43 @@ int fsi_cache_getEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *buffer)
   return FSI_IPC_EOK;
 }
 
-//int main(void)
-//{
-//  CACHE_TABLE_T cacheTable;
-//  CACHE_TABLE_INIT_PARAM cacheTableInitParam;
-//  CACHE_TABLE_ENTRY_T cacheEntry;
-//  CACHE_KEY_TYPE_T i;
-//  CACHE_DATA_TYPE_T j = 0;
-//  cacheTableInitParam.cacheKeyComprefn = &fsi_cache_keyCompare;
-//  cacheTableInitParam.cacheTableID     = CACHE_ID_192_FRONT_END_HANDLE_TO_NAME_CACHE;
-//  cacheTableInitParam.dataSizeInBytes  = sizeof (CACHE_DATA_TYPE_T);
-//  cacheTableInitParam.keyLengthInBytes = sizeof (CACHE_KEY_TYPE_T);
-//  cacheTableInitParam.maxNumOfCacheEntries = 10;
+// ----------------------------------------------------------------------------
+// This function is used to dump first 32 bytes of data pointed by *data
 //
-//  fsi_cache_table_init(&cacheTable, &cacheTableInitParam);
+// Input: data = data to be dumped.
+//        index = indicate the index of this particular piece of data within
+//                an whole array of similar data
+void fsi_cache_32Bytes_rawDump(fsi_ipc_trace_level loglevel, void *data, int index)
+{
+  uint64_t * ptr = (uint64_t *) data;
+
+  if (data != NULL) {
+          ptr = (uint64_t *)data;
+    FSI_TRACE(loglevel, "Data[%d] = 0x%lx %lx %lx %lx",
+              index, ptr[0], ptr[1], ptr[2], ptr[3]);
+  }
+}
+
+// ----------------------------------------------------------------------------
+// This function is used to dump all keys in the
+// g_fsi_name_handle_cache_opened_files to the log.
 //
-//  for (i=1; i <= 10; i++) {
-//    j = i+0xA0;
-//    cacheEntry.key = &i;
-//    cacheEntry.data = &j;
-//    fsi_cache_insertEntry(&cacheTable, &cacheEntry);
-//  }
-//
-///*  cacheEntry.key = &i;
-//  for (i=1; i<=cacheTable.cacheMetaData.numElementsOccupied; i++) {
-//    fsi_cache_getEntry(&cacheTable,&cacheEntry);
-//    FSI_TRACE(FSI_NOTICE, "data = 0x%x\n", *((CACHE_DATA_TYPE_T *) cacheTable.cacheEntries[i].data));
-//  } */
-//
-//
-///*  i = 5;
-//  cacheEntry.key = &i;
-//  fsi_cache_deleteEntry(&cacheTable, &cacheEntry); */
-//  for (i=0; i<cacheTable.cacheMetaData.numElementsOccupied; i++)
-//  {
-//    FSI_TRACE(FSI_NOTICE, "CacheEntry[%d] = %d\n", i, *((CACHE_KEY_TYPE_T *) cacheTable.cacheEntries[i].key));
-//  }
-//
-//  i = 1;
-//  cacheEntry.key = &i;
-//  fsi_cache_getEntry(&cacheTable,&cacheEntry);
-//  FSI_TRACE(FSI_NOTICE, "data = 0x%x\n", *((CACHE_DATA_TYPE_T *) cacheEntry.data));
-//
-//  i = 5;
-//  cacheEntry.key = &i;
-//  fsi_cache_deleteEntry(&cacheTable, &cacheEntry);
-//
-//  for (i=0; i<cacheTable.cacheMetaData.numElementsOccupied; i++)
-//  {
-//    FSI_TRACE(FSI_NOTICE, "CacheEntry[%d] = %d\n", i, *((CACHE_KEY_TYPE_T *) cacheTable.cacheEntries[i].key));
-//  }
-//
-///*    cacheEntry.key = &i;
-//    for (i=1; i<=cacheTable.cacheMetaData.numElementsOccupied; i++) {
-//      fsi_cache_getEntry(&cacheTable,&cacheEntry);
-//      FSI_TRACE(FSI_NOTICE, "data = 0x%x\n", *((CACHE_DATA_TYPE_T *) cacheTable.cacheEntries[i].data));
-//    } */
-///*
-//
-//  fsi_cache_getEntry(&cacheTable,&cacheEntry);
-//  FSI_TRACE(FSI_NOTICE, "data = 0x%x\n", *((CACHE_DATA_TYPE_T *) cacheTable.cacheEntries[i].data)); */
-//  return 0;
-//
-//
-//}
+// Input: cacheTable = cacheTable holding the keys to be printed.
+//        titleString = Description the purpose of this print.  It's for
+//                      logging purpose only. (NOTE: this can be NULL)
+void fsi_cache_handle2name_dumpTableKeys(fsi_ipc_trace_level logLevel,
+                                         CACHE_TABLE_T *cacheTable,
+                                         char *titleString)
+{
+#ifdef PRINT_CACHE_KEY
+  int i;
+
+  if (titleString != NULL) {
+    FSI_TRACE(logLevel, titleString);
+  }
+
+  for (i=0; i<cacheTable->cacheMetaData.numElementsOccupied; i++) {
+    fsi_cache_32Bytes_rawDump(logLevel, cacheTable->cacheEntries[i].key,i);
+  }
+#endif
+}

@@ -13,8 +13,6 @@
 #define PT_UTIL_CACHE_H_
 
 #define CACHE_MAX_NUM_CACHE_ENTRY(_CACHE_TABLE) (sizeof(_CACHE_TABLE)/sizeof(CACHE_DATA_TYPE_T))
-//#define FSI_TRACE(_LEVEL,...) printf (__VA_ARGS__)
-//#define FSI_IPC_EOK  0
 
 // An enum representing what the purpose of this cache table is
 // This is mostly for facilitating debugging in the log
@@ -81,6 +79,9 @@ int fsi_cache_getInsertionPoint(CACHE_TABLE_T         *cacheTable,
 int fsi_cache_insertEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatToInsert);
 int fsi_cache_deleteEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatToDelete);
 int fsi_cache_getEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *buffer);
-
+void fsi_cache_handle2name_dumpTableKeys(fsi_ipc_trace_level logLevel,
+                                         CACHE_TABLE_T *cacheTable,
+                                         char *titleString);
+void fsi_cache_32Bytes_rawDump(fsi_ipc_trace_level loglevel, void *data, int index);
 extern CACHE_TABLE_T g_fsi_name_handle_cache_opened_files;
 #endif /* PT_UTIL_CACHE_H_ */
