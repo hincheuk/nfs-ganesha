@@ -136,7 +136,6 @@ fsi_get_name_from_handle(fsal_op_context_t * p_context,
   struct fsi_handle_cache_entry_t handle_entry;
   uint64_t * handlePtr;
   ptfsal_threadcontext_t *p_cur_context;
-  CACHE_TABLE_ENTRY_T cacheLookupEntry;
   CACHE_ENTRY_DATA_HANDLE_TO_NAME_T *handleToNameEntryPtr;
   FSI_TRACE(FSI_DEBUG, "Get name from handle: \n");
   handlePtr = (uint64_t *) handle;
@@ -191,13 +190,13 @@ fsi_get_name_from_handle(fsal_op_context_t * p_context,
 
   // Look up our front end opened handle cache
   pthread_mutex_lock(&g_fsi_name_handle_mutex);
-  cacheLookupEntry.key = &handle[0];
 
   rc = fsi_cache_getEntry(&g_fsi_name_handle_cache_opened_files,
-                          &cacheLookupEntry);
+                          &handle[0],
+                          (char *)handleToNameEntryPtr);
 
   if (rc == FSI_IPC_EOK) {
-    handleToNameEntryPtr = (CACHE_ENTRY_DATA_HANDLE_TO_NAME_T *) cacheLookupEntry.data;
+//    handleToNameEntryPtr = (CACHE_ENTRY_DATA_HANDLE_TO_NAME_T *) cacheLookupEntry.data;
     strncpy(name, handleToNameEntryPtr->m_name,
             sizeof(handle_entry.m_name));
     name[sizeof(handle_entry.m_name)-1] = '\0';
@@ -766,13 +765,12 @@ ptfsal_open_by_handle(fsal_op_context_t * p_context,
   open_rc = ccl_open(&ccl_context, fsi_filename, oflags, mode);
 
   if (open_rc != -1) {
-    memset (&cacheEntry, 0x00, sizeof(CACHE_TABLE_ENTRY_T));
     handle_to_name_cache_data.handle_index = open_rc;
     strncpy (handle_to_name_cache_data.m_name, fsi_filename, sizeof(handle_to_name_cache_data.m_name));
-    cacheEntry.key =  p_fsi_handle->data.handle.f_handle;
-    cacheEntry.data = &handle_to_name_cache_data;
     pthread_mutex_lock(&g_fsi_name_handle_mutex);
-    rc = fsi_cache_insertEntry(&g_fsi_name_handle_cache_opened_files, &cacheEntry);
+    rc = fsi_cache_insertEntry(&g_fsi_name_handle_cache_opened_files,
+                               p_fsi_handle->data.handle.f_handle,
+                               &handle_to_name_cache_data);
     pthread_mutex_unlock(&g_fsi_name_handle_mutex);
   }
 

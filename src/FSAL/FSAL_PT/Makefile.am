@@ -13,10 +13,11 @@ libfsalpt_la_SOURCES = fsal_access.c fsal_compat.c fsal_context.c	\
 	fsal_stats.c fsal_tools.c fsal_create.c	                        \
 	fsal_fileop.c fsal_internal.c fsal_stats.c	                \
 	fsal_xattrs.c fsal_local_op.c		                        \
-	fsal_xattrs.c pt_ganesha.c fsal_close_listener.c pt_util_cache.c
-
-libfsalpt_la_LIBADD = -lfsi_ipc_ccl                                     \
-			../../support/libsupport.la                  
+	fsal_xattrs.c pt_ganesha.c fsal_close_listener.c pt_util_cache.c \
+	fsi_ipc_ccl_acl.c  fsi_ipc_ccl.c  fsi_ipc_ccl_dir.c  \
+	fsi_ipc_ccl_duplicate_defs.c fsi_ipc_ccl_io.c  fsi_ipc_ccl_nfs.c \ 
+	fsi_ipc_ccl_statistics.c
+libfsalpt_la_LIBADD = ../../support/libsupport.la                  
 
 new: clean all
 

@@ -183,9 +183,17 @@ PTFSAL_Init(fsal_parameter_t * init_info    /* IN */)
   cacheTableInitParam.dataSizeInBytes  = sizeof(CACHE_ENTRY_DATA_HANDLE_TO_NAME_T);
   cacheTableInitParam.keyLengthInBytes = sizeof(g_fsi_name_handle_cache.m_entry[0].m_handle);
   cacheTableInitParam.maxNumOfCacheEntries = FSI_MAX_STREAMS + FSI_CIFS_RESERVED_STREAMS;
+  cacheTableInitParam.cachePrintKeysfn = NULL;
 
-  fsi_cache_table_init(&g_fsi_name_handle_cache_opened_files,
+  rc = fsi_cache_table_init(&g_fsi_name_handle_cache_opened_files,
                        &cacheTableInitParam);
+
+  if (rc != FSI_IPC_EOK) {
+  	FSI_TRACE(FSI_ERR, "Failed to initialize cache table.  CacheTableID[%d] rc[%d]",
+  			      cacheTableInitParam.cacheTableID, rc);
+    Return(ERR_FSAL_FAULT, 1, INDEX_FSAL_Init);
+  }
+
   /* Regular exit */
   Return(ERR_FSAL_NO_ERROR, 0, INDEX_FSAL_Init);
 }

@@ -13,6 +13,9 @@
 #define PT_UTIL_CACHE_H_
 
 #define CACHE_MAX_NUM_CACHE_ENTRY(_CACHE_TABLE) (sizeof(_CACHE_TABLE)/sizeof(CACHE_DATA_TYPE_T))
+#define CACHE_ENTRY_KEY_MAX_LENGTH  256
+#define CACHE_ENTRY_DATA_MAX_LENGTH PATH_MAX
+
 //#define FSI_TRACE(_LEVEL,...) printf (__VA_ARGS__)
 //#define FSI_IPC_EOK  0
 
@@ -22,6 +25,8 @@ typedef enum {
   CACHE_ID_192_FRONT_END_HANDLE_TO_NAME_CACHE = 1,
   CACHE_ID_2500_BACK_END_HANDLE_TO_NAME_CACHE = 2
 } CACHE_ID_ENUMS;
+
+struct CACHE_TABLE_T;
 
 typedef struct {
   int            keyLengthInBytes;      // Length (in bytes) of the key
@@ -39,14 +44,24 @@ typedef struct {
   //          0 if string1 == string2
   //         -1 if string1 <  string2
   int    (*cacheKeyComprefn)(const void *cacheEntry1, const void *cacheEntry2);
+
+  // ----------------------------------------------------------------------------
+  // This function is used to dump all keys to the log.  This can be NULL if not
+  // desired
+  //
+  // Input: cacheTable = cacheTable holding the keys to be printed.
+  //        titleString = Description the purpose of this print.  It's for
+  //                      logging purpose only. (NOTE: this can be NULL)
+//  void   (*cachePrintKeysfn)(CACHE_TABLE_T *cacheTable, char *titleString);
+  void   (*cachePrintKeysfn)(struct CACHE_TABLE *cacheTable, char *titleString);
 } CACHE_TABLE_INIT_PARAM;
 
 typedef struct {
   // NOTE: cache entries are not pre-declared array.  They only contains pointers
   //       to memory location where the real information is stored for the cached
   //       entries.
-  void *key;  // Pointer to cached Key
-  void *data; // Pointer Cached data
+  char key[CACHE_ENTRY_KEY_MAX_LENGTH];   // Pointer to cached Key
+  char data[CACHE_ENTRY_DATA_MAX_LENGTH]; // Pointer Cached data
 } CACHE_TABLE_ENTRY_T;
 
 typedef struct {
@@ -57,10 +72,14 @@ typedef struct {
   CACHE_ID_ENUMS cacheTableID;  // This is used to identify which cache this is.
                                 // Defined in CACHE_ID_* enum
   // Function pointer to the comparison function
-  int (*cacheKeyComprefn)(const void *key1, const void *key2);
+  int (*cacheKeyComprefn)(void *key1, void *key2);
+
+  // Function pointer to the key print function
+//  void   (*cachePrintKeysfn)(CACHE_TABLE_T *cacheTable, char *titleString);
+  void   (*cachePrintKeysfn)(struct CACHE_TABLE *cacheTable, char *titleString);
 } CACHE_TABLE_META_DATA_T;
 
-typedef struct {
+typedef struct CACHE_TABLE{
   CACHE_TABLE_META_DATA_T  cacheMetaData;
   CACHE_TABLE_ENTRY_T     *cacheEntries;
 } CACHE_TABLE_T;
@@ -70,17 +89,29 @@ typedef struct {
                  // This should have the name length of PATH_MAX
   int  handle_index;      // We record handle index if there is one for this name
 } CACHE_ENTRY_DATA_HANDLE_TO_NAME_T;
-int fsi_cache_handle2name_keyCompare(const void *cacheEntry1, const void *cacheEntry2);
+
+#define CACHE_TABLE_KEY_DUMP(_TABLE, _TITLE_STRING)                       \
+	if (cacheTable->cacheMetaData.cachePrintKeysfn != NULL) {               \
+    cacheTable->cacheMetaData.cachePrintKeysfn(_TABLE, _TITLE_STRING);    \
+  }
+
+int fsi_cache_handle2name_keyCompare(void *cacheEntry1, void *cacheEntry2);
 
 int fsi_cache_table_init(CACHE_TABLE_T *cacheTableToInit,
                          CACHE_TABLE_INIT_PARAM *cacheTableInitParam);
 
+//int fsi_cache_getInsertionPoint(CACHE_TABLE_T         *cacheTable,
+//                                CACHE_TABLE_ENTRY_T   *whatToInsert,
+//                                int                   *whereToInsert);
 int fsi_cache_getInsertionPoint(CACHE_TABLE_T         *cacheTable,
-                                CACHE_TABLE_ENTRY_T   *whatToInsert,
+                                char                  *key,
                                 int                   *whereToInsert);
-int fsi_cache_insertEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatToInsert);
-int fsi_cache_deleteEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatToDelete);
-int fsi_cache_getEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *buffer);
-
+//int fsi_cache_insertEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatToInsert);
+int fsi_cache_insertEntry(CACHE_TABLE_T *cacheTable, void *key, void *data);
+//int fsi_cache_deleteEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *whatToDelete);
+int fsi_cache_deleteEntry(CACHE_TABLE_T *cacheTable, char *key);
+//int fsi_cache_getEntry(CACHE_TABLE_T *cacheTable, CACHE_TABLE_ENTRY_T *buffer);
+int fsi_cache_getEntry(CACHE_TABLE_T *cacheTable, char *key, char *data);
+void fsi_cache_handle2name_dumpTableKeys(CACHE_TABLE_T *cacheTable, char *titleString);
 extern CACHE_TABLE_T g_fsi_name_handle_cache_opened_files;
 #endif /* PT_UTIL_CACHE_H_ */

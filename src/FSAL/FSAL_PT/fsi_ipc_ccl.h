@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <sys/acl.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,6 +59,7 @@ extern "C" {
 #define CCL_ON_DEMAND_HANDLE_TIMEOUT_SEC       15   // Timeout for on-demand
                                                     // thread looking for
                                                     // handles to close
+
 
 // FSI IPC getlock constants
 #define FSI_IPC_GETLOCK_PTYPE                  2
@@ -655,6 +657,7 @@ int wait_for_response(const int                   msg_id,
                       const size_t                msg_size,
                       const long                  msg_type,
                       const struct CommonMsgHdr * p_hdr,
+                      const uint64_t              transaction_id,
                       const uint64_t              transaction_type,
                       const int                   min_rsp_msg_bytes);
 int send_msg(int          msg_id,
@@ -766,8 +769,7 @@ int update_read_status(struct file_handle_t        * p_pread_hndl,
                        struct CommonMsgHdr         * p_pread_hdr,
                        struct ClientOpPreadReqMsg  * p_pread_req,
                        const ccl_context_t         * handle,
-                       uint64_t                      max_readahead_offset,
-                       int                         * p_combined_rc);
+                       uint64_t                      max_readahead_offset);
 int verify_io_response(int                      transaction_type,
                        int                      cur_index,
                        struct CommonMsgHdr           * p_msg_hdr,
@@ -864,7 +866,7 @@ int ccl_fsal_try_fastopen_by_index(ccl_context_t       * handle,
                                    char                * fsal_name);
 int ccl_find_oldest_handle();
 bool ccl_can_close_handle(int handle_index,
-			  int timeout);
+                          int timeout);
 
 // ---------------------------------------------------------------------------
 // CCL Up Call ptorotypes - both the Samba VFS layer and the Ganesha PTFSAL
@@ -891,6 +893,11 @@ extern pthread_mutex_t g_statistics_mutex;
 extern pthread_mutex_t g_close_mutex[FSI_MAX_STREAMS + FSI_CIFS_RESERVED_STREAMS];
 // Global I/O mutex
 extern pthread_mutex_t g_io_mutex;
+// Per stream fsync and ftrunc mutex
+// used to control concurrent i/o on stream during
+// fsync or ftrunc
+extern pthread_mutex_t g_io_handle_mutex[];
+
 #endif // ifndef __FSI_IPC_CCL_H__
 
 #ifdef __cplusplus
