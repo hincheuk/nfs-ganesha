@@ -29,7 +29,7 @@ typedef struct ptfsal_threadcontext_t
 struct vfs_fn_pointers g_ccl_function_map;
 void * g_ccl_lib_handle;
 struct file_handles_struct_t * g_fsal_fsi_handles;
-
+pthread_mutex_t g_fsi_name_handle_mutex;
 // ----------------------------------------------------------------------------
 int handle_index_is_valid(int handle_index)
 {
